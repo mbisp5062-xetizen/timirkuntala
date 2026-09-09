@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover"/>
+  <title>তিমিরকুন্তলা - অ্যালবাম</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <style>
+    body { font-family: "Noto Sans Bengali", "Roboto", system-ui, sans-serif; background: #0f1f1a; }
+    .album-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .album-card:active { transform: scale(0.98); }
+    .media-item { position: relative; overflow: hidden; border-radius: 12px; }
+    .media-item img, .media-item video { width: 100%; height: 100%; object-fit: cover; }
+    .delete-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; border-radius: 50%; width: 32px; height: 32px; display: none; align-items: center; justify-content: center; }
+    .media-item:hover .delete-btn, .media-item.show-delete .delete-btn { display: flex; }
+    .cover-preview { width: 120px; height: 120px; border-radius: 16px; object-fit: cover; border: 3px solid #10b981; }
+    .modal-backdrop { background: rgba(0,0,0,0.75); }
+    .green-btn { background: #10b981; }
+    .green-btn:hover { background: #059669; }
+    .scroll-hide::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body class="text-emerald-100 min-h-screen">
+
+  <!-- Header (matches screenshot style) -->
+  <header class="bg-emerald-950/90 backdrop-blur sticky top-0 z-40 border-b border-emerald-800">
+    <div class="flex items-center justify-between px-4 py-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-emerald-800 flex items-center justify-center overflow-hidden">
+          <img src="https://via.placeholder.com/40" alt="logo" class="w-full h-full object-cover"/>
+        </div>
+        <h1 class="text-xl font-bold text-emerald-100">তিমিরকুন্তলা</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <button class="w-10 h-10 rounded-full bg-emerald-800 flex items-center justify-center">
+          <i class="fas fa-share text-emerald-300"></i>
+        </button>
+        <button class="w-10 h-10 rounded-full bg-emerald-800 flex items-center justify-center">
+          <i class="fas fa-bars text-emerald-300"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="px-4 py-6 max-w-lg mx-auto">
+
+    <!-- Tabs -->
+    <div class="flex gap-6 mb-6 text-sm font-medium border-b border-emerald-800 pb-2">
+      <button class="text-emerald-400">পোস্ট</button>
+      <button class="text-emerald-400">ছবি</button>
+      <button class="text-emerald-400">ভিডিও</button>
+    </div>
+
+    <div class="flex gap-4 mb-6 text-sm">
+      <button class="flex items-center gap-2 text-emerald-400"><i class="fas fa-play-circle"></i> শর্ট ভিডিও</button>
+      <button class="flex items-center gap-2 text-emerald-400"><i class="fas fa-lock"></i> স্টোরি (শুধু আপনি)</button>
+    </div>
+
+    <!-- Create Album Button -->
+    <button id="openCreateModal" class="green-btn w-full py-3 rounded-full font-semibold text-emerald-950 flex items-center justify-center gap-2 mb-8 shadow-lg shadow-emerald-900/40">
+      <i class="fas fa-plus"></i> Create Album
+    </button>
+
+    <!-- Albums Section -->
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">অ্যালবাম <span class="text-sm font-normal text-emerald-400">(সীমাহীন ছবি ও ভিডিও)</span></h2>
+    </div>
+
+    <p class="text-sm text-emerald-400 mb-6">যত খুশি অ্যালবাম তৈরি করুন এবং প্রতিটিতে অসংখ্য ছবি ও ভিডিও আপলোড করুন। আপলোড করা মিডিয়া স্থায়ীভাবে থাকবে — শুধুমাত্র আপনি মুছে ফেললে সরবে।</p>
+
+    <!-- Album List -->
+    <div id="albumList" class="grid grid-cols-2 gap-4">
+      <!-- Albums rendered here -->
+    </div>
+
+    <p class="text-center text-xs text-emerald-600 mt-12">© 2024 তিমিরকুন্তলা. All rights reserved.</p>
+  </main>
+
+  <!-- ==================== CREATE / EDIT ALBUM MODAL ==================== -->
+  <div id="createModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
+    <div class="bg-emerald-950 border border-emerald-700 rounded-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="p-5 border-b border-emerald-800 flex items-center justify-between">
+        <h3 class="text-lg font-bold" id="modalTitle">নতুন অ্যালবাম তৈরি করুন</h3>
+        <button id="closeModal" class="text-emerald-400 text-xl">&times;</button>
+      </div>
+
+      <div class="p-5 space-y-5">
+        <!-- Album Name -->
+        <div>
+          <label class="block text-sm font-medium text-emerald-300 mb-1">অ্যালবামের নাম</label>
+          <input id="albumName" type="text" placeholder="যেমন: Sometimes 2026" class="w-full px-4 py-3 rounded-xl bg-emerald-900 border border-emerald-700 focus:border-emerald-500 outline-none text-emerald-100"/>
+        </div>
+
+        <!-- Privacy -->
+        <div>
+          <label class="block text-sm font-medium text-emerald-300 mb-1">গোপনীয়তা</label>
+          <select id="albumPrivacy" class="w-full px-4 py-3 rounded-xl bg-emerald-900 border border-emerald-700 focus:border-emerald-500 outline-none text-emerald-100">
+            <option value="public">সবাই (Public)</option>
+            <option value="friends">বন্ধুরা (Friends)</option>
+            <option value="only_me">শুধু আপনি (Only Me)</option>
+          </select>
+        </div>
+
+        <!-- Cover Photo Selection -->
+        <div>
+          <label class="block text-sm font-medium text-emerald-300 mb-2">কভার ছবি নির্বাচন করুন</label>
+          <div class="flex items-center gap-4">
+            <div id="coverPreviewContainer" class="w-28 h-28 rounded-2xl bg-emerald-900 border-2 border-dashed border-emerald-600 flex items-center justify-center overflow-hidden">
+              <i class="fas fa-image text-3xl text-emerald-600" id="coverPlaceholder"></i>
+              <img id="coverPreview" class="cover-preview hidden" alt="Cover"/>
+            </div>
+            <div class="flex-1 space-y-2">
+              <label class="green-btn block text-center py-2.5 rounded-xl font-medium text-emerald-950 cursor-pointer">
+                <i class="fas fa-camera mr-1"></i> ছবি বেছে নিন
+                <input type="file" id="coverInput" accept="image/*" class="hidden"/>
+              </label>
+              <button id="removeCover" class="w-full py-2 rounded-xl border border-emerald-700 text-sm text-emerald-400 hidden">কভার সরান</button>
+            </div>
+          </div>
+          <p class="text-xs text-emerald-500 mt-2">কভার ছবি অ্যালবামের প্রধান ছবি হিসেবে দেখাবে। পরেও পরিবর্তন করতে পারবেন।</p>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-sm font-medium text-emerald-300 mb-1">বর্ণনা (ঐচ্ছিক)</label>
+          <textarea id="albumDesc" rows="2" placeholder="Just fun..." class="w-full px-4 py-3 rounded-xl bg-emerald-900 border border-emerald-700 focus:border-emerald-500 outline-none text-emerald-100 resize-none"></textarea>
+        </div>
+
+        <!-- Permanent Media Notice -->
+        <div class="bg-emerald-900/60 border border-emerald-700 rounded-xl p-3 text-sm text-emerald-300">
+          <i class="fas fa-lock mr-2 text-emerald-400"></i>
+          <strong>স্থায়ী সংরক্ষণ:</strong> এই অ্যালবামে আপলোড করা প্রতিটি ছবি ও ভিডিও স্থায়ীভাবে থাকবে। শুধুমাত্র আপনি নিজে মুছে ফেললেই সরবে।
+        </div>
+
+        <button id="saveAlbumBtn" class="green-btn w-full py-3.5 rounded-xl font-bold text-emerald-950 text-lg">
+          অ্যালবাম তৈরি করুন
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== ALBUM DETAIL / VIEW MODAL ==================== -->
+  <div id="viewModal" class="fixed inset-0 z-50 hidden flex-col bg-emerald-950">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-emerald-800">
+      <button id="closeView" class="text-emerald-300 text-xl"><i class="fas fa-arrow-left"></i></button>
+      <h3 id="viewAlbumName" class="font-bold text-lg"></h3>
+      <button id="editAlbumBtn" class="text-emerald-400"><i class="fas fa-edit"></i></button>
+    </div>
+
+    <!-- Cover + Info -->
+    <div class="relative">
+      <div id="viewCover" class="h-48 bg-emerald-900 flex items-center justify-center">
+        <i class="fas fa-images text-5xl text-emerald-700"></i>
+      </div>
+      <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+        <p id="viewDesc" class="text-sm text-emerald-200"></p>
+        <p id="viewCount" class="text-xs text-emerald-400 mt-1"></p>
+      </div>
+    </div>
+
+    <!-- Upload Media -->
+    <div class="p-4 border-b border-emerald-800">
+      <label class="green-btn block text-center py-3 rounded-xl font-semibold text-emerald-950 cursor-pointer">
+        <i class="fas fa-cloud-upload-alt mr-2"></i> ছবি / ভিডিও আপলোড করুন
+        <input type="file" id="mediaInput" accept="image/*,video/*" multiple class="hidden"/>
+      </label>
+      <p class="text-xs text-center text-emerald-500 mt-2">আপলোড করা মিডিয়া স্থায়ীভাবে অ্যালবামে থাকবে</p>
+    </div>
+
+    <!-- Media Grid -->
+    <div id="mediaGrid" class="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2 scroll-hide">
+      <!-- media items -->
+    </div>
+  </div>
+
+  <!-- Delete Confirmation -->
+  <div id="deleteConfirm" class="fixed inset-0 z-[60] hidden items-center justify-center modal-backdrop">
+    <div class="bg-emerald-950 border border-red-800 rounded-2xl p-6 mx-6 max-w-sm text-center">
+      <i class="fas fa-trash-alt text-4xl text-red-500 mb-3"></i>
+      <h4 class="font-bold text-lg mb-2">মিডিয়া মুছে ফেলবেন?</h4>
+      <p class="text-sm text-emerald-400 mb-5">এটি স্থায়ীভাবে মুছে যাবে এবং আর ফিরে পাওয়া যাবে না।</p>
+      <div class="flex gap-3">
+        <button id="cancelDelete" class="flex-1 py-2.5 rounded-xl border border-emerald-700">বাতিল</button>
+        <button id="confirmDelete" class="flex-1 py-2.5 rounded-xl bg-red-600 font-semibold">মুছে ফেলুন</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ==========================================================
+   DATA LAYER - Permanent storage using localStorage
+   Media stays until user explicitly deletes it
+   ========================================================== */
+const STORAGE_KEY = 'timirkuntala_albums_v1';
+
+function loadAlbums() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAlbums(albums) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(albums));
+}
+
+function generateId() {
+  return 'alb_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+/* ==========================================================
+   STATE
+   ========================================================== */
+let albums = loadAlbums();
+let currentAlbumId = null;
+let pendingCoverDataUrl = null;
+let pendingDeleteMediaId = null;
+let isEditing = false;
+
+/* ==========================================================
+   RENDER ALBUM LIST
+   ========================================================== */
+function renderAlbumList() {
+  const container = document.getElementById('albumList');
+  if (albums.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-2 text-center py-12 text-emerald-600">
+        <i class="fas fa-folder-open text-5xl mb-3"></i>
+        <p>এখনো কোনো অ্যালবাম নেই</p>
+        <p class="text-sm mt-1">উপরে Create Album চাপুন</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = albums.map(a => {
+    const cover = a.coverUrl
+      ? `<img src="${a.coverUrl}" class="w-full h-full object-cover" alt="cover">`
+      : `<div class="w-full h-full flex items-center justify-center bg-emerald-900"><i class="fas fa-images text-3xl text-emerald-600"></i></div>`;
+
+    return `
+      <div class="album-card bg-emerald-900 rounded-2xl overflow-hidden border border-emerald-800 cursor-pointer" onclick="openAlbum('${a.id}')">
+        <div class="aspect-square relative">
+          ${cover}
+          ${a.privacy === 'only_me' ? '<span class="absolute top-2 left-2 bg-black/60 text-xs px-2 py-0.5 rounded-full"><i class="fas fa-lock"></i></span>' : ''}
+        </div>
+        <div class="p-3">
+          <p class="font-semibold text-sm truncate">${escapeHtml(a.name)}</p>
+          <p class="text-xs text-emerald-500 mt-0.5">${a.media.length} টি মিডিয়া · ${a.privacyLabel || a.privacy}</p>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ==========================================================
+   CREATE / EDIT MODAL
+   ========================================================== */
+const createModal = document.getElementById('createModal');
+const coverInput = document.getElementById('coverInput');
+const coverPreview = document.getElementById('coverPreview');
+const coverPlaceholder = document.getElementById('coverPlaceholder');
+const removeCoverBtn = document.getElementById('removeCover');
+
+document.getElementById('openCreateModal').addEventListener('click', () => {
+  isEditing = false;
+  currentAlbumId = null;
+  document.getElementById('modalTitle').textContent = 'নতুন অ্যালবাম তৈরি করুন';
+  document.getElementById('saveAlbumBtn').textContent = 'অ্যালবাম তৈরি করুন';
+  document.getElementById('albumName').value = '';
+  document.getElementById('albumDesc').value = '';
+  document.getElementById('albumPrivacy').value = 'public';
+  pendingCoverDataUrl = null;
+  coverPreview.classList.add('hidden');
+  coverPlaceholder.classList.remove('hidden');
+  removeCoverBtn.classList.add('hidden');
+  createModal.classList.remove('hidden');
+  createModal.classList.add('flex');
+});
+
+document.getElementById('closeModal').addEventListener('click', closeCreateModal);
+function closeCreateModal() {
+  createModal.classList.add('hidden');
+  createModal.classList.remove('flex');
+}
+
+// Cover photo selection
+coverInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    pendingCoverDataUrl = ev.target.result;
+    coverPreview.src = pendingCoverDataUrl;
+    coverPreview.classList.remove('hidden');
+    coverPlaceholder.classList.add('hidden');
+    removeCoverBtn.classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+});
+
+removeCoverBtn.addEventListener('click', () => {
+  pendingCoverDataUrl = null;
+  coverPreview.src = '';
+  coverPreview.classList.add('hidden');
+  coverPlaceholder.classList.remove('hidden');
+  removeCoverBtn.classList.add('hidden');
+  coverInput.value = '';
+});
+
+// Save album (create or update)
+document.getElementById('saveAlbumBtn').addEventListener('click', () => {
+  const name = document.getElementById('albumName').value.trim();
+  if (!name) {
+    alert('অ্যালবামের নাম দিন');
+    return;
+  }
+
+  const privacy = document.getElementById('albumPrivacy').value;
+  const privacyLabels = { public: 'সবাই', friends: 'বন্ধুরা', only_me: 'শুধু আপনি' };
+  const desc = document.getElementById('albumDesc').value.trim();
+
+  if (isEditing && currentAlbumId) {
+    // Update existing
+    const album = albums.find(a => a.id === currentAlbumId);
+    if (album) {
+      album.name = name;
+      album.privacy = privacy;
+      album.privacyLabel = privacyLabels[privacy];
+      album.description = desc;
+      if (pendingCoverDataUrl !== null) {
+        album.coverUrl = pendingCoverDataUrl; // can be null if removed
+      }
+      album.updatedAt = Date.now();
+    }
+  } else {
+    // Create new
+    const newAlbum = {
+      id: generateId(),
+      name,
+      privacy,
+      privacyLabel: privacyLabels[privacy],
+      description: desc,
+      coverUrl: pendingCoverDataUrl || null,
+      media: [],          // permanent media list
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    albums.unshift(newAlbum);
+  }
+
+  saveAlbums(albums);
+  renderAlbumList();
+  closeCreateModal();
+
+  // If we just created, open it
+  if (!isEditing) {
+    openAlbum(albums[0].id);
+  }
+});
+
+/* ==========================================================
+   VIEW ALBUM + PERMANENT MEDIA
+   ========================================================== */
+const viewModal = document.getElementById('viewModal');
+
+function openAlbum(id) {
+  currentAlbumId = id;
+  const album = albums.find(a => a.id === id);
+  if (!album) return;
+
+  document.getElementById('viewAlbumName').textContent = album.name;
+  document.getElementById('viewDesc').textContent = album.description || '';
+  document.getElementById('viewCount').textContent = `${album.media.length} টি মিডিয়া · স্থায়ী সংরক্ষণ`;
+
+  const coverEl = document.getElementById('viewCover');
+  if (album.coverUrl) {
+    coverEl.innerHTML = `<img src="${album.coverUrl}" class="w-full h-full object-cover" alt="cover">`;
+  } else {
+    coverEl.innerHTML = `<i class="fas fa-images text-5xl text-emerald-700"></i>`;
+  }
+
+  renderMediaGrid(album);
+  viewModal.classList.remove('hidden');
+  viewModal.classList.add('flex');
+}
+
+document.getElementById('closeView').addEventListener('click', () => {
+  viewModal.classList.add('hidden');
+  viewModal.classList.remove('flex');
+  currentAlbumId = null;
+});
+
+// Edit album (from view)
+document.getElementById('editAlbumBtn').addEventListener('click', () => {
+  const album = albums.find(a => a.id === currentAlbumId);
+  if (!album) return;
+
+  isEditing = true;
+  document.getElementById('modalTitle').textContent = 'অ্যালবাম সম্পাদনা করুন';
+  document.getElementById('saveAlbumBtn').textContent = 'সংরক্ষণ করুন';
+  document.getElementById('albumName').value = album.name;
+  document.getElementById('albumDesc').value = album.description || '';
+  document.getElementById('albumPrivacy').value = album.privacy;
+
+  if (album.coverUrl) {
+    pendingCoverDataUrl = album.coverUrl;
+    coverPreview.src = album.coverUrl;
+    coverPreview.classList.remove('hidden');
+    coverPlaceholder.classList.add('hidden');
+    removeCoverBtn.classList.remove('hidden');
+  } else {
+    pendingCoverDataUrl = null;
+    coverPreview.classList.add('hidden');
+    coverPlaceholder.classList.remove('hidden');
+    removeCoverBtn.classList.add('hidden');
+  }
+
+  createModal.classList.remove('hidden');
+  createModal.classList.add('flex');
+});
+
+/* ==========================================================
+   UPLOAD MEDIA - Permanent until user deletes
+   ========================================================== */
+document.getElementById('mediaInput').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length || !currentAlbumId) return;
+
+  const album = albums.find(a => a.id === currentAlbumId);
+  if (!album) return;
+
+  for (const file of files) {
+    const dataUrl = await readFileAsDataURL(file);
+    const mediaItem = {
+      id: 'med_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      type: file.type.startsWith('video') ? 'video' : 'image',
+      url: dataUrl,
+      name: file.name,
+      size: file.size,
+      uploadedAt: Date.now()
+      // NO expiry, NO temporary flag → permanent
+    };
+    album.media.unshift(mediaItem);
+  }
+
+  album.updatedAt = Date.now();
+  // If no cover yet, use first image as cover
+  if (!album.coverUrl && album.media.length) {
+    const firstImg = album.media.find(m => m.type === 'image');
+    if (firstImg) album.coverUrl = firstImg.url;
+  }
+
+  saveAlbums(albums);
+  renderMediaGrid(album);
+  renderAlbumList(); // update count on list
+  e.target.value = ''; // reset input
+});
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => resolve(ev.target.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderMediaGrid(album) {
+  const grid = document.getElementById('mediaGrid');
+  if (album.media.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-3 text-center py-16 text-emerald-600">
+        <i class="fas fa-cloud-upload-alt text-4xl mb-3"></i>
+        <p>এখনো কোনো মিডিয়া নেই</p>
+        <p class="text-sm">উপরে আপলোড করুন — স্থায়ীভাবে থাকবে</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = album.media.map(m => {
+    const content = m.type === 'video'
+      ? `<video src="${m.url}" class="w-full h-full object-cover" muted></video>`
+      : `<img src="${m.url}" class="w-full h-full object-cover" alt="">`;
+
+    return `
+      <div class="media-item aspect-square bg-emerald-900" data-id="${m.id}">
+        ${content}
+        <button class="delete-btn" onclick="event.stopPropagation(); askDelete('${m.id}')">
+          <i class="fas fa-trash text-sm"></i>
+        </button>
+      </div>`;
+  }).join('');
+}
+
+/* ==========================================================
+   DELETE MEDIA (only way to remove)
+   ========================================================== */
+function askDelete(mediaId) {
+  pendingDeleteMediaId = mediaId;
+  document.getElementById('deleteConfirm').classList.remove('hidden');
+  document.getElementById('deleteConfirm').classList.add('flex');
+}
+
+document.getElementById('cancelDelete').addEventListener('click', () => {
+  document.getElementById('deleteConfirm').classList.add('hidden');
+  document.getElementById('deleteConfirm').classList.remove('flex');
+  pendingDeleteMediaId = null;
+});
+
+document.getElementById('confirmDelete').addEventListener('click', () => {
+  if (!pendingDeleteMediaId || !currentAlbumId) return;
+
+  const album = albums.find(a => a.id === currentAlbumId);
+  if (album) {
+    album.media = album.media.filter(m => m.id !== pendingDeleteMediaId);
+    // If deleted media was the cover, clear or set new cover
+    if (album.coverUrl && !album.media.some(m => m.url === album.coverUrl)) {
+      const nextImg = album.media.find(m => m.type === 'image');
+      album.coverUrl = nextImg ? nextImg.url : null;
+    }
+    album.updatedAt = Date.now();
+    saveAlbums(albums);
+    renderMediaGrid(album);
+    renderAlbumList();
+  }
+
+  document.getElementById('deleteConfirm').classList.add('hidden');
+  document.getElementById('deleteConfirm').classList.remove('flex');
+  pendingDeleteMediaId = null;
+});
+
+// Long-press support for mobile delete
+let pressTimer;
+document.getElementById('mediaGrid').addEventListener('touchstart', (e) => {
+  const item = e.target.closest('.media-item');
+  if (!item) return;
+  pressTimer = setTimeout(() => {
+    item.classList.add('show-delete');
+  }, 500);
+});
+document.getElementById('mediaGrid').addEventListener('touchend', () => clearTimeout(pressTimer));
+document.getElementById('mediaGrid').addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+/* ==========================================================
+   INIT
+   ========================================================== */
+renderAlbumList();
+
+// Demo seed if empty (optional)
+if (albums.length === 0) {
+  // leave empty so user starts fresh
+}
+</script>
+</body>
+</html>
